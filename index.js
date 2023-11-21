@@ -70,7 +70,7 @@ const verifyAdmin = async(req, res, next) => {
   next();
 }
 
-    app.get("/users/admin/:email", verifyToken, verifyAdmin, async(req, res) => {
+    app.get("/users/admin/:email", verifyToken,  async(req, res) => {
       const email = req.params.email;
       if(email !== req.decoded.email){
         return res.status(403).send({message: 'Unauthorized access'});
@@ -101,6 +101,12 @@ const verifyAdmin = async(req, res, next) => {
       const result = await menuCollection.find().toArray();
       res.send(result);
     });
+
+    app.post('/menu',verifyToken, verifyAdmin, async(req, res) => {
+      const item = req.body;
+      const result = await menuCollection.insertOne(item);
+      res.send(result);
+    })
     app.get("/reviews", async(req, res) => {
         const result = await reviewCollection.find().toArray();
         res.send(result);
