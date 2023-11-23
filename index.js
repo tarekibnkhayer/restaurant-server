@@ -51,15 +51,15 @@ async function run() {
     // middleware:
  const verifyToken = (req, res, next) => {
   if(!req.headers.authorization){
-    return res.status(401).send({message: 'forbidden'});
+    return res.status(401).send({message: "unauthorized"});
   }
   const token = req.headers.authorization.split(' ')[1];
   jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (err, decoded) => {
     if(err){
-      return res.status(401).send({message: 'forbidden'});
+      return res.status(403).send({message: 'forbidden'});
     }
     req.decoded = decoded;
-    next()
+    next();
   })
 };
 // use verifyAdmin after  verifyToken
@@ -223,6 +223,28 @@ const verifyAdmin = async(req, res, next) => {
       }}
       const deleteResult = await cartCollection.deleteMany(query);
       res.send({paymentResult, deleteResult});
+    });
+
+    app.get('/stats-admin', verifyToken, verifyAdmin, async(req, res) => {
+      const users = await userCollection.estimatedDocumentCount();
+      const menuItems = await menuCollection.estimatedDocumentCount();
+      const orders = await paymentCollection.estimatedDocumentCount();
+      // this way is not the best way:
+      // const payments = await paymentCollection.find().toArray();
+      // const revenue = payments.reduce((accumulator, item) => accumulator + item.price, 0);
+      const pipeline = [
+        {
+          $group: {
+            _id: null,
+            totalRevenue: {
+              $sum: "$price"
+            }
+          }
+        }
+      ];
+      const result = await paymentCollection.aggregate(pipeline).toArray();
+      const totalRevenue = result.length > 0 ? result[0].totalRevenue: 0;
+      res.send({users, menuItems, orders, totalRevenue});
     })
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
